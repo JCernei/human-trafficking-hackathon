@@ -5,6 +5,7 @@ import VueVectorMap from 'vuevectormap'
 
 // Import your preferred map
 require('jsvectormap/dist/maps/world')
+require('jsvectormap/dist/maps/world-merc')
 
 const app = createApp(App)
 
