@@ -2,6 +2,7 @@
   <div class="app-container">
     <div class="map-container">
       <div id="map"></div>
+      <button @click="startRandomValues">Start Setting Random Values</button>
     </div>
     <div class="info-panels">
       <div class="marker-panel" v-if="selectedMarker">
@@ -214,21 +215,65 @@ export default {
     },
 
     // Function to increase scores based on time
-    // increaseScoresBasedOnTime(scores) {
-    //   setInterval(() => {
-    //     for (const country in scores) {
-    //       if (country != 'asd') {
-    //         scores[country] = scores[country] + 3;
-    //         const roundedScore = Math.round(scores[country]);
-    //         this.updatedScores[country] = roundedScore;
-    //       }
-    //     }
-    //     console.log(this.updatedScores);
-    //     this.map.params.visualizeData.values = this.updatedScores;
+    increaseScoresBasedOnTime(scores) {
+      setInterval(() => {
+        for (const country in scores) {
+          if (country != 'min') {
+            if (country != 'max' && scores[country] < scores['max']) {
+              scores[country] = scores[country] + 3;
+              const roundedScore = Math.round(scores[country]);
+              this.updatedScores[country] = roundedScore;
+            }
+          }
+        }
+        // console.log(this.jsonData);
+        console.log(this.updatedScores);
+        this.map.params.visualizeData.values = this.updatedScores;
 
-    //   }, 1000); // Set the interval to one second (1000 milliseconds)
+      }, 1000); // Set the interval to one second (1000 milliseconds)
+    },
+
+    // startRandomValues(data) {
+    //   // Call the setRandomValues function initially
+    //   // Set up the interval to execute setRandomValues every 2 seconds
+    //   setTimeout(function() {
+    //       this.setRandomValues(data)
+    //     }, 2000);
     // },
 
+    setRandomValues(data) {
+        for (const country in data) {
+          if (country != 'min') {
+            if (country != 'max' && data[country] < data['max']) {
+              data[country] = Math.floor(Math.random() * 100);
+              const roundedScore = Math.round(data[country]);
+              this.updatedScores[country] = roundedScore;
+            }
+          }
+        }
+        console.log(this.updatedScores);
+    },
+
+
+    normalizeData(originalData) {
+      // const min = 0;
+      // const max = 100;
+      // console.log(min);
+      // console.log(originalData.key);
+
+      const min = originalData.min;
+      const max = originalData.max;
+
+      this.normalizedData = Object.fromEntries(
+        Object.entries(originalData).map(([key, value]) => {
+          if (key !== 'min' && key !== 'max') {
+            return [key, (1 + ((value - min) / (max - min)) * 98) / 2];
+          } else {
+            return [key, value];
+          }
+        })
+      );
+    },
 
     handleMarkerOptionClick(option) {
       // Handle clicks on marker options
@@ -239,6 +284,7 @@ export default {
       console.log('Region option clicked:', option);
     },
   },
+  
 }
 </script>
 
