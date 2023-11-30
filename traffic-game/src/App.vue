@@ -21,22 +21,17 @@
         </ul>
       </div>
     </div>
-
   </div>
-    <!-- <button @click="increaseScoresBasedOnTime(this.updatedScores)">Start</button> -->
 </template>
 
 <script>
 import jsVectorMap from 'jsvectormap'
 import 'jsvectormap/dist/maps/world'
 
-import 'jsvectormap/dist/js/jsvectormap.min.js'
-    
+
 import countriesData from '@/../../model/world.json';
 import countriesToMarkData from '@/../../model/countries.json';
-import data from '../../model/output.json'
-
-import { reactive } from 'vue';
+import output from '../../model/output.json'
 
 export default {
   data() {
@@ -46,9 +41,8 @@ export default {
       selectedMarker: null,
       selectedRegion: null,
       timeFactor: 1.5,
-      jsonData: data,
-      updatedScores: reactive(data),
-      scoresUpdated: 0,
+      jsonData: output,
+      updatedScores: {},
     }
   },
   computed: {
@@ -84,59 +78,127 @@ export default {
     },
   },
   mounted() {
-    this.map = new jsVectorMap({
-      selector: '#map',
-      map: 'world',
-      backgroundColor: '#3d85c6',
-      markers: this.markers,
-      markerStyle: {
-        initial: { fill: '#3498db', stroke: '#ffffff' },
-        hover: { fill: '#2c3e50', stroke: '#ffffff' },
-      },
-      zoomButtons: false,
-      showTooltip: false,
-      regionsSelectable: true,
-      regionsSelectableOne: true,
+    this.createMapContainer();
+    this.createMap();
 
-      regionStyle: {
-        initial: {
-          fill: '#ddf0b2',
-          stroke: '#000000',
-          strokeWidth: 0.3,
-          fillOpacity: 1
-        },
-        hover: {
-          fillOpacity: 0.8,
-          cursor: 'pointer'
-        },
-        selected: {
-          fillOpacity: 0.9,
-          fill: '#ffffff',
-          stroke: '#ff8b00',
-          strokeWidth: 1,
-        },
-      },
-      visualizeData: {
-        scale: ['#f6685e', '#7a211b'],
-        values: data,
-      },
-
-      onMarkerClick: (event, index) => {
-        this.selectedMarker = this.markers[index];
-        this.selectedRegion = null;
-        console.log('Marker clicked:', this.selectedMarker.name);
-      },
-      onRegionClick: (event, code) => {
-        this.selectedMarker = null;
-        this.selectedRegion = { name: code }; // Use the region code as a placeholder
-        console.log('Region clicked:', code);
-      },
-    });
-    this.loadMarkersFromJson();
-    this.increaseScoresBasedOnTime(this.updatedScores)
+    // setInterval(() => {
+    //   this.destroyMap();
+    // }, 1000);
   },
 
   methods: {
+    destroyMap() {
+      if (this.map) {
+        console.log('Destroying map')
+        this.map.destroy();
+        // console.log(this.map);
+
+        // Remove the map container from the DOM
+        const mapContainer = document.querySelector('#map');
+        if (mapContainer) {
+          mapContainer.parentNode.removeChild(mapContainer);
+        }
+
+        console.log('Recreating map');
+
+        this.setRandomValues(this.jsonData);
+        // this.backgroundColor = 'navy';
+        this.createMapContainer();
+        this.createMap();
+
+      }
+    },
+    createMapContainer() {
+      // Find the existing map container
+      const mapContainer = document.querySelector('.map-container');
+
+      // Check if the map container already exists
+      if (mapContainer) {
+        // Remove the existing #map element if it exists
+        const existingMap = mapContainer.querySelector('#map');
+        if (existingMap) {
+          existingMap.parentNode.removeChild(existingMap);
+        }
+
+        // Create a new #map element and append it to the map container
+        const newMap = document.createElement('div');
+        newMap.id = 'map';
+        newMap.style.width = '100%';
+        newMap.style.height = '100%';
+
+        // You can customize the class or styles if needed
+        mapContainer.appendChild(newMap);
+      }
+    },
+    createMap() {
+      this.map = new jsVectorMap({
+        selector: '#map',
+        map: 'world',
+        backgroundColor: '#3d85c6',
+        zoomOnScrollSpeed: 1,
+        zoomStep: 100.0,
+        markers: this.markers,
+        markerStyle: {
+          initial: { fill: '#3498db', stroke: '#ffffff' },
+          hover: { fill: '#2c3e50', stroke: '#ffffff' },
+        },
+        zoomButtons: false,
+        // showTooltip: false,
+        regionsSelectable: true,
+        regionsSelectableOne: true,
+
+        regionStyle: {
+          initial: {
+            fill: '#ddf0b2',
+            stroke: '#000000',
+            strokeWidth: 0.3,
+            fillOpacity: 1
+          },
+          hover: {
+            fillOpacity: 0.8,
+            cursor: 'pointer'
+          },
+          selected: {
+            fillOpacity: 0.9,
+            fill: '#ffffff',
+            stroke: '#ff8b00',
+            strokeWidth: 1,
+          },
+        },
+        visualizeData: {
+          scale: ['#f6685e', '#7a211b'],
+          values: this.updatedScores,
+        },
+
+        onMarkerClick: (event, index) => {
+          this.selectedMarker = this.markers[index];
+          this.selectedRegion = null;
+          console.log('Marker clicked:', this.selectedMarker.name);
+        },
+        onRegionClick: (event, code) => {
+          this.selectedMarker = null;
+          this.selectedRegion = { name: code }; // Use the region code as a placeholder
+          console.log('Region clicked:', code);
+        },
+      });
+
+      this.loadMarkersFromJson();
+    },
+
+    setRandomValues(data) {
+      console.log(data);
+      for (const country in data) {
+        if (country != 'min') {
+          if (country != 'max') {
+            data[country] = Math.floor(Math.random() * 100);
+            const roundedScore = Math.round(data[country]);
+            this.updatedScores[country] = roundedScore;
+          }
+        }
+      }
+      console.log(this.updatedScores);
+    },
+
     loadMarkersFromJson() {
       const countriesToMark = countriesToMarkData.countries;
 
@@ -152,21 +214,20 @@ export default {
     },
 
     // Function to increase scores based on time
-    increaseScoresBasedOnTime(scores) {
-      setInterval(() => {
-        for (const country in scores) {
-          if (country != 'asd') {
-            scores[country] = scores[country] + 3;
-            const roundedScore = Math.round(scores[country]);
-            this.updatedScores[country] = roundedScore;
-          }
-        }
-        console.log(this.updatedScores);
-        this.map.params.visualizeData.values = this.updatedScores;
-        this.scoresUpdated += 1;
-       
-      }, 1000); // Set the interval to one second (1000 milliseconds)
-    },
+    // increaseScoresBasedOnTime(scores) {
+    //   setInterval(() => {
+    //     for (const country in scores) {
+    //       if (country != 'asd') {
+    //         scores[country] = scores[country] + 3;
+    //         const roundedScore = Math.round(scores[country]);
+    //         this.updatedScores[country] = roundedScore;
+    //       }
+    //     }
+    //     console.log(this.updatedScores);
+    //     this.map.params.visualizeData.values = this.updatedScores;
+
+    //   }, 1000); // Set the interval to one second (1000 milliseconds)
+    // },
 
 
     handleMarkerOptionClick(option) {
@@ -174,11 +235,9 @@ export default {
       console.log('Marker option clicked:', option);
     },
     handleRegionOptionClick(option) {
-      console.log(data)
       // Handle clicks on region options
       console.log('Region option clicked:', option);
     },
-    // Function to update map data
   },
 }
 </script>
@@ -186,7 +245,7 @@ export default {
 <style scoped>
 .app-container {
   display: flex;
-  justify-content: space-evenly;
+  /* justify-content: space-evenly; */
   width: 100%;
 }
 
@@ -202,7 +261,11 @@ export default {
 #map {
   width: 100%;
   height: 100%;
-  /* Adjust the height as needed */
+}
+
+.your-custom-map-class {
+  width: 100%;
+  height: 100%;
 }
 
 .info-panels {
