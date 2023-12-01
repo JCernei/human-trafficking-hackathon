@@ -2,7 +2,6 @@
   <div class="app-container">
     <div class="map-container">
       <div id="map"></div>
-      <button @click="startRandomValues">Start Setting Random Values</button>
     </div>
     <div class="info-panels">
       <div class="marker-panel" v-if="selectedMarker">
@@ -21,6 +20,18 @@
           </li>
         </ul>
       </div>
+    </div>
+  </div>
+  <div v-if="showCongratsPopup" class="congrats-popup">
+    <div class="congrats-content">
+      <p class="congrats-text">Congratulations!</p>
+      <p class="win-text">You WON!</p>
+    </div>
+  </div>
+  <div v-if="showLosePopup" class="lose-popup">
+    <div class="lose-content">
+      <p class="lose-text">Oh No!</p>
+      <p class="losetext">You LOST!</p>
     </div>
   </div>
 </template>
@@ -43,7 +54,12 @@ export default {
       selectedRegion: null,
       timeFactor: 1.5,
       jsonData: output,
-      updatedScores: {},
+      normalizedData: {},
+      updatedScores: output,
+      sum: 0,
+      showCongratsPopup: false,
+      showLosePopup: false,
+
     }
   },
   computed: {
@@ -79,12 +95,13 @@ export default {
     },
   },
   mounted() {
+    this.normalizeData(this.jsonData)
     this.createMapContainer();
     this.createMap();
 
-    // setInterval(() => {
-    //   this.destroyMap();
-    // }, 1000);
+    setInterval(() => {
+      this.destroyMap();
+    }, 1000);
   },
 
   methods: {
@@ -92,7 +109,6 @@ export default {
       if (this.map) {
         console.log('Destroying map')
         this.map.destroy();
-        // console.log(this.map);
 
         // Remove the map container from the DOM
         const mapContainer = document.querySelector('#map');
@@ -101,9 +117,7 @@ export default {
         }
 
         console.log('Recreating map');
-
-        this.setRandomValues(this.jsonData);
-        // this.backgroundColor = 'navy';
+        this.increaseScoresBasedOnTime(this.normalizedData)
         this.createMapContainer();
         this.createMap();
 
@@ -178,7 +192,7 @@ export default {
         },
         onRegionClick: (event, code) => {
           this.selectedMarker = null;
-          this.selectedRegion = { name: code }; // Use the region code as a placeholder
+          this.selectedRegion = { name: code };
           console.log('Region clicked:', code);
         },
       });
@@ -216,54 +230,35 @@ export default {
 
     // Function to increase scores based on time
     increaseScoresBasedOnTime(scores) {
-      setInterval(() => {
-        for (const country in scores) {
-          if (country != 'min') {
-            if (country != 'max' && scores[country] < scores['max']) {
-              scores[country] = scores[country] + 3;
-              const roundedScore = Math.round(scores[country]);
-              this.updatedScores[country] = roundedScore;
-            }
+      for (const country in scores) {
+        if (country != 'min' && country != 'max' && scores[country] < 100) {
+          scores[country] = scores[country] + 10;
+          if (scores[country] > 100)
+
+            scores[country] = 100;
+          const roundedScore = Math.round(scores[country]);
+          this.updatedScores[country] = roundedScore;
+
+          this.sum = 0
+          for (const key in this.updatedScores) {
+            if (this.updatedScores[key] < this.updatedScores['max'] + 10)
+              this.sum += this.updatedScores[key];
+          }
+          console.log(this.sum)
+          if (this.sum >= (Object.keys(this.updatedScores).length - 1) * 100) {
+            console.log('failfail')
+            this.displayLose()
           }
         }
-        // console.log(this.jsonData);
-        console.log(this.updatedScores);
-        this.map.params.visualizeData.values = this.updatedScores;
-
-      }, 1000); // Set the interval to one second (1000 milliseconds)
+      }
+      console.log(this.updatedScores);
     },
-
-    // startRandomValues(data) {
-    //   // Call the setRandomValues function initially
-    //   // Set up the interval to execute setRandomValues every 2 seconds
-    //   setTimeout(function() {
-    //       this.setRandomValues(data)
-    //     }, 2000);
-    // },
-
-    setRandomValues(data) {
-        for (const country in data) {
-          if (country != 'min') {
-            if (country != 'max' && data[country] < data['max']) {
-              data[country] = Math.floor(Math.random() * 100);
-              const roundedScore = Math.round(data[country]);
-              this.updatedScores[country] = roundedScore;
-            }
-          }
-        }
-        console.log(this.updatedScores);
-    },
-
 
     normalizeData(originalData) {
-      // const min = 0;
-      // const max = 100;
-      // console.log(min);
-      // console.log(originalData.key);
+      const values = Object.values(originalData);
 
-      const min = originalData.min;
-      const max = originalData.max;
-
+      let min = Math.min(...values);
+      let max = Math.max(...values);
       this.normalizedData = Object.fromEntries(
         Object.entries(originalData).map(([key, value]) => {
           if (key !== 'min' && key !== 'max') {
@@ -273,25 +268,48 @@ export default {
           }
         })
       );
+      console.log(this.normalizedData)
     },
 
     handleMarkerOptionClick(option) {
       // Handle clicks on marker options
       console.log('Marker option clicked:', option);
+
+      // Show the congratulations popup
+      this.displayWin()
     },
+
     handleRegionOptionClick(option) {
       // Handle clicks on region options
       console.log('Region option clicked:', option);
+      this.displayWin()
     },
+
+    displayWin() {
+
+      this.showCongratsPopup = true;
+
+    },
+
+    displayLose() {
+      this.showLosePopup = true;
+    }
   },
-  
+
 }
 </script>
 
 <style scoped>
+body {
+  height: 100%;
+  width: 100%;
+}
+
 .app-container {
   display: flex;
-  /* justify-content: space-evenly; */
+  justify-content: space-evenly;
+  background-color: #3d85c6;
+  height: 100%;
   width: 100%;
 }
 
@@ -299,7 +317,7 @@ export default {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 90vh;
+  height: 98.5vh;
   /* Adjust the height as needed */
   width: 78%;
 }
@@ -315,9 +333,12 @@ export default {
 }
 
 .info-panels {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-left: 5%;
+  margin-right: 2%;
   width: 20%;
-  /* padding: 20px; */
-  /* box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); */
 }
 
 .marker-panel,
@@ -347,16 +368,78 @@ li {
   cursor: pointer;
   color: #3498db;
   border: 1px solid transparent;
-  /* Initially transparent border */
   padding: 2px;
-  /* Add padding for a bit of spacing */
   transition: border-color 0.3s ease-in-out;
   display: inline-block;
-  /* Ensure the border surrounds the text */
 }
 
 .clickable-option:hover {
   border-color: #3498db;
-  /* Change border color on hover */
+}
+
+.congrats-popup {
+  position: fixed;
+  width: 33%;
+  height: 40%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 999;
+  /* Ensure it's above other elements */
+}
+
+.congrats-content {
+  background-color: #dbd034;
+  border: 2px solid #5e1919;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.congrats-text {
+  font-size: 24px;
+  color: #f50303;
+  margin: 0;
+}
+
+.win-text {
+  font-size: 36px;
+  font-weight: bold;
+  color: #f50303;
+  margin: 10px 0;
+}
+
+
+.lose-popup {
+  position: fixed;
+  width: 33%;
+  height: 40%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 999;
+}
+
+.lose-content {
+  background-color: #dbd034;
+  border: 2px solid #5e1919;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.lose-text {
+  font-size: 24px;
+  color: #f50303;
+  margin: 0;
+}
+
+.losetext {
+  font-size: 36px;
+  font-weight: bold;
+  color: #f50303;
+  margin: 10px 0;
 }
 </style>
